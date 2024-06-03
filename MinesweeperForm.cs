@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -12,6 +14,7 @@ namespace Minesweeper
 {
     public class MinesweeperForm
     {
+
         private static void Main()
         {
             Application.EnableVisualStyles();
@@ -20,6 +23,9 @@ namespace Minesweeper
         }
 
         public Form Form { get; set; }
+        public Label GameText { get; set; }
+
+        public Image BombImage = new Bitmap(Resource.bomb_solid, TileWidth / 2, TileHeight / 2);
 
         private const int TotalPadding = 10;
         private const int TilePadding = 2;
@@ -71,23 +77,44 @@ namespace Minesweeper
             Form.Controls.Add(easyBtn);
             Form.Controls.Add(mediumBtn);
             Form.Controls.Add(hardBtn);
-            
+
             Form.Visible = true;
         }
 
         private void InitGame(int width, int height, int countBombs)
         {
             Game = new MinesweeperGame(InitLobby, width, height, countBombs);
-            Form.ClientSize = new Size(width * TileWidth + TotalPadding * 2, height * TileHeight + TotalPadding * 2);
+            Form.ClientSize = new Size(width * TileWidth + TotalPadding * 2, height * TileHeight + TotalPadding * 2 + TileHeight);
             Form.Controls.Clear();
+
+            this.GameText = new Label()
+            {
+                Font = new Font(FontFamily.GenericMonospace, 20, FontStyle.Bold),
+                Top = Form.ClientSize.Height - TileHeight - TotalPadding,
+                Left = TotalPadding,
+                Width = Form.ClientSize.Width - TotalPadding * 2,
+                Height = TileHeight,
+            };
+
+            Form.Controls.Add(this.GameText);
+
             Game.InitGame(CreateContainer);
+
+            UpdateText();
         }
 
         private class ContainerUpdate : Label, MinesweeperGame.IContainerUpdate
         {
+            public MinesweeperForm MinesweeperForm { get; set; }
+
             public void SetCovered() => BackColor = Color.DarkGray;
 
-            public void SetBomb() => BackColor = Color.Red;
+            public void SetBomb()
+            {
+                BackColor = Color.Red;
+                Image = MinesweeperForm.BombImage;
+                ImageAlign = ContentAlignment.MiddleCenter;
+            }
 
             public void SetOpen(int countNumber)
             {
@@ -102,12 +129,13 @@ namespace Minesweeper
         {
             var box = new ContainerUpdate
             {
+                MinesweeperForm = this,
                 BackColor = Color.Gray,
                 Font = new Font(FontFamily.GenericMonospace, 20, FontStyle.Bold),
                 Width = TileWidth - TilePadding,
                 Height = TileHeight - TilePadding,
                 Location = new Point(TotalPadding + x * TileWidth + TilePadding / 2, TotalPadding + y * TileHeight + TilePadding / 2),
-                TextAlign = ContentAlignment.MiddleCenter
+                TextAlign = ContentAlignment.MiddleCenter,
             };
 
             box.Click += (sender, args) =>
@@ -115,14 +143,26 @@ namespace Minesweeper
                 if (!(args is MouseEventArgs e))
                     return;
                 if (e.Button == MouseButtons.Left)
-                    Game.BoxClick(x, y, false);
+                    HandleMouseClick(x, y, false);
                 else if (e.Button == MouseButtons.Right)
-                    Game.BoxClick(x, y, true);
+                    HandleMouseClick(x, y, true);
             };
 
             Form.Controls.Add(box);
 
             return box;
+        }
+
+        private void HandleMouseClick(int x, int y, bool isRight)
+        {
+            Game.BoxClick(x, y, isRight);
+
+            this.UpdateText();
+        }
+
+        private void UpdateText()
+        {
+            this.GameText.Text = $"Total bombs: {Game.CountBombs}x, Fields opened: {Game.CountOpenedFields} of {Game.Width * Game.Height}";
         }
     }
 }

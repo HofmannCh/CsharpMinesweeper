@@ -14,6 +14,7 @@ namespace Minesweeper
         public int CountBombs { get; }
 
         public DateTime StartOfGame { get; set; }
+        public int CountOpenedFields { get; set; }
 
         public MinesweeperGame(Action end, int width, int height, int countBombs)
         {
@@ -26,7 +27,7 @@ namespace Minesweeper
             if (countBombs > (width * height) * 0.9)
                 throw new ArgumentOutOfRangeException(nameof(countBombs), "Too many bombs, at least 10% of the map has to be not a bomb");
 
-            _end = end ?? Application.Exit;
+            _end = end;
             Width = width;
             Height = height;
             CountBombs = countBombs;
@@ -115,6 +116,7 @@ namespace Minesweeper
 
             p.IsOpen = true;
             p.Box.SetOpen(p.Number);
+            this.CountOpenedFields++;
 
             if (returnFirst || p.Number != 0)
                 return;
@@ -156,13 +158,16 @@ namespace Minesweeper
 
                 OpenField(p);
 
-                for (var y = 0; y < Height; y++)
-                    for (var x = 0; x < Width; x++)
-                    {
-                        var f = Fields[y, x];
-                        if (!(f.IsOpen || f.IsBomb))
-                            return;
-                    }
+                //for (var y = 0; y < Height; y++)
+                //    for (var x = 0; x < Width; x++)
+                //    {
+                //        var f = Fields[y, x];
+                //        if (!(f.IsOpen || f.IsBomb))
+                //            return;
+                //    }
+
+                if(this.CountOpenedFields < this.Width * this.Height + this.CountBombs)
+                    return;
 
                 ShowBombs();
 
